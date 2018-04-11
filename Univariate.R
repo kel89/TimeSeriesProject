@@ -56,6 +56,12 @@ par(mfrow=c(1,1))
 #######################################################
 # As GDP, we will work in logs, and a trend so log differences
 l_gdp <- log(gdp)
+
+# What kind of trend?
+q <- floor(sqrt(length(l_gdp)))
+CADFtest(l_gdp, type="trend", criterion = "BIC", max.lag.y = q) # fail to reject --> stochastic
+
+# Work in differences
 ld_gdp <- diff(log(gdp))
 plot.ts(ld_gdp)
 
@@ -148,8 +154,148 @@ mses <- c(mean(error_ar), mean(error_sar), mean(error_sar_both),
 rbind(c("AR", "SAR", "Both", "MA", "SMA"), mses)
 # This says that the seasonal AR model is the best
 
+# Run DM test comparing SAR and AR
+h <- 1
+dm.test(error_sar, error_ar, h=h, power=2) # reject, therefore SAR is indeed better
+
+# Predictions (SAR model)
+sar_pred <- predict(sar, n.ahead=8) # 2 years
+sar_expected <- sar_pred$pred
+sar_lower <- sar_pred$pred-qnorm(0.975)*sar_pred$se;
+sar_upper <- sar_pred$pred+qnorm(0.975)*sar_pred$se;
+cbind(sar_lower, sar_expected, sar_upper)
+
+# Predictions (AR model)
+ar_pred <- predict(ar, n.ahead=8) # 2 years
+ar_expected <- ar_pred$pred
+ar_lower <- ar_pred$pred-qnorm(0.975)*ar_pred$se;
+ar_upper <- ar_pred$pred+qnorm(0.975)*ar_pred$se;
+cbind(ar_lower, ar_expected, ar_upper)
+
+# Plot of the two predictions
+par(mfrow=c(2,1))
+plot.ts(l_gdp, xlim=c(2000, 2020), ylim=c(16.3, 17), main="Log GDP predictions (SAR)", ylab="Log GDP")
+lines(sar_expected,col="red")
+lines(sar_lower,col="blue")
+lines(sar_upper,col="blue")
+
+plot.ts(l_gdp, xlim=c(2000, 2020), ylim=c(16.3, 17), main="Log GDP predictions (AR)", ylab="Log GDP")
+lines(ar_expected,col="red")
+lines(ar_lower,col="blue")
+lines(ar_upper,col="blue")
+par(mfrow=c(1,1))
+# Those plots are in fact different, just very slightly
+
 # I think a neat way to end the paper would be to make some future economic predictions 
 # it will be neat to compare what the univariate prediction vs. the multi are
+
+
+#######################################################
+#                     CPI
+#######################################################
+# Once again we will work in logs
+l_cpi <- log(cpi)
+
+# Check trend type
+q <- floor(sqrt(length(l_cpi)))
+CADFtest(l_cpi, type="trend", criterion = "BIC", max.lag.y = q) # reject, stochastic
+
+# Work in differences
+dl_cpi <- diff(l_cpi)
+CADFtest(dl_cpi, type="drift", criterion = "BIC", max.lag.y = q) # stationary
+
+# Check seasonality
+monthplot(dl_cpi) # should work in seasonal differences
+sdl_cpi <- diff(dl_cpi, 4)
+monthplot(sdl_cpi)
+CADFtest(sdl_cpi, type="drift", criterion = "BIC", max.lag.y = q) # super stationary
+
+# Now lets start modeling
+par(mfrow=c(2,1))
+acf(sdl_cpi, main="CPI Seasonal Log Differences")
+pacf(sdl_cpi, main="")
+par(mfrow=c(1,1))
+
+# Appears 1 Seasonal MA term (or later, 1 or 2 SAR terms)
+sma <- Arima(l_cpi, order=c(0,1,0), seasonal=c(0,1,1))
+summary(sma)
+plot.ts(sma$residuals)
+acf(sma$residuals) # on the edge
+Box.test(sma$residuals, lag=q, type="Ljung-Box") # fail to reject, so should be fine
+
+# Check SAR models
+# SAR(1)
+sar1 <- Arima(l_cpi, order=c(0,1,0), seasonal=c(1,1,0))
+summary(sar1)
+plot.ts(sar1$residuals)
+acf(sar1$residuals) # on the edge
+Box.test(sar1$residuals, lag=q, type="Ljung-Box") # reject --> not a good model
+
+# SAR(2)
+sar2 <- Arima(l_cpi, order=c(0,1,0), seasonal=c(2,1,0))
+summary(sar2)
+plot.ts(sar2$residuals)
+acf(sar2$residuals) # on the edge
+Box.test(sar2$residuals, lag=q, type="Ljung-Box") # fail to reject --> kinda OK model
+
+# Compare in-sample metric
+BIC(sma)
+BIC(sar1) # <-- says best, but I am very skeptical
+BIC(sar2)
+
+# out-of-sample error (this is weird, it is saying they are all the same?)
+error_sma <- window_forecast(l_cpi, c(0,1,0), c(0,1,1), 1)
+error_sar1 <- window_forecast(l_cpi, c(0,1,0), c(1,1,0), 1)
+error_sar2 <- window_forecast(l_cpi, c(0,1,0), c(2,1,0), 1)
+
+# Compare
+# Compare mse
+mses <- c(mean(error_sma^2), mean(error_sar1^2), mean(error_sar2^2))
+rbind(c("SMA", "SAR(1)", "SAR(2)"), mses)
+
+# Should do a DM test, but not sure which to even compare?
+h <- 1
+dm.test(error_sma, error_sar2, h=h, power=2) # error, wtf?
+
+# Lets just make a predict with one for now? SAR(2)
+sar2_pred <- predict(sar2, n.ahead=8) # 2 years
+sar2_expected <- sar2_pred$pred
+sar2_lower <- sar2_pred$pred-qnorm(0.975)*sar2_pred$se;
+sar2_upper <- sar2_pred$pred+qnorm(0.975)*sar2_pred$se;
+cbind(sar2_lower, sar2_expected, sar2_upper)
+
+# Plot of the two predictions
+plot.ts(l_cpi, xlim=c(2000, 2020), ylim=c(5.2, 6.2), main="Log CPI predictions (SAR2)", ylab="Log CPI")
+lines(sar2_expected,col="red")
+lines(sar2_lower,col="blue")
+lines(sar2_upper,col="blue")
+
+
+
+#######################################################
+#                     FX
+#######################################################
+# Log it as % changes
+l_fx <- log(fx)
+
+# Check trend type
+q <- floor(sqrt(length(l_fx)))
+CADFtest(l_fx, type="trend", criterion = "BIC", max.lag.y = q) # fail to reject, stochastic 
+
+# Work in differences
+dl_fx <- diff(l_fx)
+CADFtest(dl_fx, type="drift", criterion = "BIC", max.lag.y = q) # stationary
+
+# Check seasonality
+monthplot(dl_fx) # I think it is fine each well within variation
+
+# Now lets start modeling
+par(mfrow=c(2,1))
+acf(dl_fx, main="FX Log Differences")
+pacf(dl_fx, main="")
+par(mfrow=c(1,1))
+# There is nothing to be modeleded here?
+
 
 
 
