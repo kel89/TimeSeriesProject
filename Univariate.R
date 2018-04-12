@@ -15,6 +15,11 @@ library(CADFtest)
 gdp <- read.csv("Data/gdp_2013.csv")
 cpi <- read.csv("Data/CPI.csv")
 fx <- read.csv("Data/FX.csv")
+mex90 <- read.csv("Data/90day_mex.csv")
+us90 <- read.csv("Data/90day_us.csv")
+pesos <- read.csv("Data/pesos.csv") # money supply
+emp <- read.csv("Data/unemployment.csv") 
+
 
 # Adjust data
 cpi <- cpi[,1:2]
@@ -25,12 +30,13 @@ fx <- ts(fx[,2], start=c(1990, 1), frequency=12)
 
 gdp <- ts(gdp[,2], start=c(1993, 1), frequency=4) # Quarterly!
 
-# Plot data before compression and window cut
-par(mfrow=c(3,1))
-plot.ts(cpi, main="CPI")
-plot.ts(gdp, main="GDP", ylab="Mex")
-plot.ts(fx, main="FX", ylab="Pesos/Dollars")
-par(mfrow=c(1,1))
+mex90 <- ts(mex90[,2], start=c(2000, 1), frequency=4)
+us90 <- ts(us90[,2], start=c(2000,1), frequency = 12)
+
+pesos <- ts(pesos[,2], start=c(2000, 1), frequency=12)
+pesos <- pesos / 1e6 # in millions
+
+emp <- ts(emp[,2], start=c(2000,1), frequency = 4)
 
 # Decide where to cut window
 cpi <- window(cpi, start=2000)
@@ -40,15 +46,20 @@ gdp <- window(gdp, start=2000)
 # Compress Monthly to Quarterly (takes mean of the 3 months)
 cpi <- aggregate(cpi, nfrequency = 4)
 fx <- aggregate(fx, nfrequency = 4)
+us90 <- aggregate(us90, nfrequency = 4)
+pesos <- aggregate(pesos, nfrequency = 4)
 
-# Plot with all quarterly
-par(mfrow=c(3,1))
+# Plot data before compression and window cut
+par(mfrow=c(4,2))
 plot.ts(cpi, main="CPI")
 plot.ts(gdp, main="GDP", ylab="Mex")
 plot.ts(fx, main="FX", ylab="Pesos/Dollars")
+plot.ts(mex90, main="Interest Rate", ylab="%")
+plot.ts(us90, main="Interest Rate", ylab="%")
+plot.ts(pesos, main="Money Supply", ylab="Pesos (millions)")
+plot.ts(emp, main="Unemployment", ylab="%")
 par(mfrow=c(1,1))
-# nothing should really change, just slight smoothing
-# but now we have the same frequncy for later analysis
+
 
 
 #######################################################
