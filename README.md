@@ -16,12 +16,12 @@ Your paper should at least consist of the following sections:
 
 Data discussion: Discuss briefly what the time series represent and give the source of the data.
 
-###Univariate Time Series Analysis:
+#### Univariate Time Series Analysis:
 - Start by making a plot of your time series, discuss stationarity, apply the steps of the Box-Jenkins approach (model specification, estimation, validation) to specify several appropriate models.
 - Compare your models based on both in-sample and out-of-sample forecast criteria.
 
 
-###Multivariate Time Series Analysis:
+#### Multivariate Time Series Analysis:
 - Add another/several other time series to your paper and discuss the relationship among the time series that you would like to investigate. Note that a bivariate analysis is sufficient, but you are free to look at a relationship between more than 2 time series. Specify, estimate and validate some dynamic models
 - Investigate Granger Causality
 - Specify and estimate a VAR model + look at the impulse response functions
