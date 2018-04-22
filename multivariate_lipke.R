@@ -7,6 +7,25 @@ setwd("~/Documents/STSCI 4550 -- Time Series/TimeSeriesProject")
 # For co-integration, what do we do with seasonal differences?
 # Such a thing as seasonal ADL model?
 # The VAR model with GDP and CPI, what is that MQ test doing?
+#
+# Stuggling to interpret MQ test for all 3
+
+# For gdp ~ ue, when I am doing ADL model, how can I get it to fit better, with like
+# seasonal terms? I can't valide the model for Granger causaulity without it. Can I just add my 
+# own by cherry picking correctly from the `embed` matrix?
+
+# How can we do a seasonal VAR model, which is what I think it wants
+
+# With cointegration, if the series are in seasonal and normal differences
+# in the EG test, do we want to run the regression with the series in tottal levels
+# or should we leave the seasonal differences?
+
+# What if our series are NOT cointegrated, do we just say that and move on?
+# Then we can't do an ECM? Then we need a GARCH model, and we haven't gotten that
+# far, but I am not sure if it will be Garch... then what?
+
+
+
 
 
 library(readxl)
@@ -234,3 +253,193 @@ mq(varresid, round(sqrt(length(sld_GDP)))) # umm what?
 plot(irf(var1,ortho=FALSE,boot=TRUE))
 # we see CPI does not have a later impact on GDP
 
+
+#### GDP ~ CPI + MB ---- 
+par(mfrow = c(3,1))
+ts.plot(GDP)
+ts.plot(CPI)
+ts.plot(MB)
+
+ts.plot(sld_GDP)
+ts.plot(sld_CPI)
+ts.plot(sld_MB)
+
+# all 3 stationary so lets run normal regression
+d <- lm(sld_GDP ~ sld_CPI + sld_MB)
+summary(d)
+par(mfrow=c(2,1))
+acf(d$residuals)
+pacf(d$residuals)
+
+l_GDP <- log(GDP)
+l_CPI <- log(CPI)
+l_MB <- log(MB)
+# TRY SAR(1)(1) for erros
+arima_d <- Arima(sld_GDP, order=c(1,0,0), seasonal=c(1,0,0), xreg=cbind(sld_CPI, sld_MB))
+summary(arima_d) # this shows serious significance!
+acf(arima_d$residuals) # lookin good! 
+Box.test(arima_d$residuals, lag = round(sqrt(length(arima_d$residuals))), type = "Ljung-Box")
+# Super white noise, so that is a good descriptive model
+# Looking again at the summary, we see positive in CPI, and negative in MB
+# makes sense for CPI, and as MB goes up, this devalues currency, and if the price stays the same
+# which is the C.P. assumption, then people are less likely to buy mexican goods abroad?
+# which would drive down GDP? I am not sure if that makes sense?
+
+
+# Now lets look at cross correlations
+par(mfrow=c(2,1))
+ccf(x=sld_CPI[,1], y=sld_GDP[,1])
+ccf(x=sld_MB[,1], y=sld_GDP[,1])
+par(mfrow=c(1,1))
+# This would lead me to believe that there is no good ADL model to specify?
+
+### NOT SURE WHAT TO DO ABOUT ADL AND GRANGER IF I CAN'T SPEICFY WITH CCF????????
+
+
+
+
+#### VAR model
+mydata <- cbind(sld_GDP, sld_CPI, sld_MB)
+VARselect(mydata)
+# BIC says 1, AIC says 9 (way too many), do 1
+var_mod <- vars::VAR(mydata, p=1)
+summary(var_mod)
+varresid <- resid(var_mod)
+par(mfrow=c(3,2)) # there are 7
+acf(varresid[,1])
+acf(varresid[,2])
+acf(varresid[,3])
+ccf(varresid[,1], varresid[,2])
+ccf(varresid[,1], varresid[,3])
+par(mfrow=c(1,1))
+# Run a test, because I am honestly not sure?
+mq(varresid, lag=floor(sqrt(length(sld_GDP))))
+# what do we make of this
+
+# irf
+plot(irf(var_mod,ortho=FALSE,boot=TRUE))
+# literally noting exciting at all
+
+
+
+
+
+
+
+# What if we did GDP and unemployment?
+# is unemployment even stationary?
+ts.plot(diff(UE))
+monthplot(diff(UE))
+ts.plot(diff(diff(UE), 4))
+monthplot(diff(diff(UE), 4))
+sd_UE <- diff(diff(UE), 4)
+q <- round(sqrt(length(sd_UE)))
+CADFtest(sd_UE,type="drift",criterion="BIC",max.lag.y=q) # stationary
+
+# Can try dynaim model
+gdp_ue <- lm(sld_GDP ~ sd_UE)
+summary(gdp_ue) # so in differences it is significant
+
+# Dynamic model
+ccf(y = sld_GDP[,1], x = sd_UE[,1]) # there is some significance at one lag, and it appears at a seasonal
+# You messed up, it looks like GDP is predicting unemployment... we could spin that
+#DL(1)
+lag <- 1
+gdp.e <- embed(sld_GDP, dimension=lag+1)
+ue.e <- embed(sld_UE, dimension = lag+1)
+dl1 <- lm(gdp.e[,1] ~ ue.e)
+summary(dl1) # marginal significance at the lag
+acf(dl1$residuals) # def have some structure in the residuals
+Box.test(dl1$residuals, lag = round(sqrt(length(dl1$residuals))), type = "Ljung-Box") # not white noise
+
+# ADL model (I need some seasonal terms)
+lag <- 4
+gdp.e <- embed(sld_GDP, dimension=lag+1)
+ue.e <- embed(sld_UE, dimension = lag+1)
+adl1 <- lm(gdp.e[,1] ~ gdp.e[,-1] + ue.e) # no predicitive ability
+summary(adl1)
+acf(adl1$residuals) # still not good
+# take a look at an ADL with predicitive ability
+adlp <- lm(gdp.e[,1] ~ gdp.e[,-1] + ue.e[,-1])
+summary(adlp) # when controlling for past GDP, UE does not much matter
+acf(adlp$residuals) # still not good?
+
+# ADL seasonal model (my attempt) # lets do 1 seasonal terms
+# using lag 4 data
+adl_s <- lm(gdp.e[,1] ~ gdp.e[,2] + gdp.e[,5] + ue.e[,2] + ue.e[,5]) # lag 1 and 1 seasonal
+summary(adl_s)
+acf(adl_s$residuals)
+Box.test(adl_s$residuals, lag = round(sqrt(length(adl_s$residuals))), type = "Ljung-Box") # Super white noise
+
+# Try granger causality with my seasonal model
+small <- lm(gdp.e[,1] ~ gdp.e[,2] + gdp.e[,5])
+anova(small, adl_s) # we see marginal significance (at the 8% level) *worth reporting
+
+# Lets try a VAR model
+dat <- cbind(sld_GDP, sd_UE)
+VARselect(dat) # 4 lags for BIC (i.e. seasonal is what it wants)
+var_mod <- vars::VAR(dat, p=4)
+summary(var_mod) # significance at ue_{t-4} and gdp_{t-1}, interesting
+res <- resid(var_mod)
+layout(matrix(c(1,2,3,3), 2, 2, byrow = TRUE))
+acf(res[,1])
+acf(res[,2])
+ccf(res[,1],res[,2]) # looks super white noise! good
+mq(res, lag=round(sqrt(length(res)))) # DEF white noise
+plot(irf(var_mod,ortho=FALSE,boot=TRUE)) # not too sure how to interpret this?
+
+
+# Cointegration with gdp and ue
+# both I(1) so check if cointegrated with Engle Granger
+
+
+
+
+### Wait, you read the ccf wrong, lets try it the correct way
+ccf(y = sld_GDP[,1], x = sd_UE[,1]) # there is some significance at one lag, and it appears at a seasonal
+# GDP has some predictive power for UE
+
+# Lets try dynamic model with one lag
+# I am NOT going to include an UE terms, unless I did a seasonal one
+# dl_1
+lag <- 1
+ue.e <- embed(sd_UE, dimension = lag+1)
+gdp.e <- embed(sld_GDP, dimension = lag+1)
+dl1 <- lm(ue.e[,1] ~ gdp.e)
+summary(dl1)
+acf(dl1$residuals) # still have a seasonal issue
+# we could try a seasonal GDP
+
+# Not ideal, lets try an ADL model to get rid of some extra, specifically adding
+# a lagged seasonal term of ue
+lag <- 4
+ue.e <- embed(sd_UE, dimension = lag+1)
+gdp.e <- embed(sld_GDP, dimension = lag+1)
+adl <- lm(ue.e[,1] ~ ue.e[,5] + gdp.e[,2])
+summary(adl)
+acf(adl$residuals) # SO DOPE
+Box.test(adl$residuals, lag = round(sqrt(length(adl$residuals))), type = "Ljung-Box") # Super white noise
+
+# lets see if we can get soem granger causality
+small <- lm(ue.e[,1] ~ gdp.e[,2])
+anova(small, adl) # very much so (gotta think about how to spin this)
+
+# Try var model (same as before, just copied)
+dat <- cbind(sld_GDP, sd_UE)
+VARselect(dat) # 4 lags for BIC (i.e. seasonal is what it wants)
+var_mod <- vars::VAR(dat, p=4)
+summary(var_mod) # significance at ue_{t-4} and gdp_{t-1}, interesting
+res <- resid(var_mod)
+layout(matrix(c(1,2,3,3), 2, 2, byrow = TRUE))
+acf(res[,1])
+acf(res[,2])
+ccf(res[,1],res[,2]) # looks super white noise! good
+mq(res, lag=round(sqrt(length(res)))) # DEF white noise
+plot(irf(var_mod,ortho=FALSE,boot=TRUE)) # not too sure how to interpret this?
+
+
+# We could try a little cointegrationm
+co <- lm(diff(UE,4) ~ diff(log(GDP), 4))
+summary(co)
+q <- round(sqrt(length(co$residuals)))
+CADFtest(co$residuals,type="drift",criterion="BIC",max.lag.y=q) # not cointgrated
