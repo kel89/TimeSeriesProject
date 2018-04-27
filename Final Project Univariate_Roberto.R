@@ -4,6 +4,7 @@
 
 rm(list = ls())
 
+install.packages("readxl")
 install.packages("CADFtest")
 install.packages("forecast")
 library(readxl)
@@ -13,7 +14,7 @@ library(forecast)
 ##############
 #####Data#####
 ##############
-GDP<- read_excel("E:/Cornell/Courses/4th semester/ILRST 4550 Applied Time Series Analysis/Project/Data_Roberto.xlsx",sheet="GDP",skip=17)
+GDP<-read_excel("E:/Cornell/Courses/4th semester/ILRST 4550 Applied Time Series Analysis/Project/Data_Roberto.xlsx",sheet="GDP",skip=17)
 GDP<-ts(GDP[,2],start=c(1993,1),frequency=4)
 GDP<-window(GDP,start=c(1997,1),end=c(2017,4))
 
@@ -65,7 +66,7 @@ L_GDP<-log(GDP)
 ts.plot(L_GDP,main="Log of GDP")
 
 #The trend was no eliminated using logs. 
-#What kind of trend? Fail to reject, Zt is random walk, L_GDP is Stochastic, work in differences
+#What kind of trend? Reject, Zt is stationary, L_GDP is deterministic, work in differences
 q1<-floor(sqrt(length(L_GDP)))
 CADFtest(L_GDP,type="trend",criterion="BIC",max.lag.y=q1)
 
@@ -313,7 +314,7 @@ ts.plot(UE,main="UE",ylab="Index")
 q5<-floor(sqrt(length(UE)))
 CADFtest(UE,type="trend",criterion="BIC",max.lag.y=q5)
 
-#Work in differences. It doesn't seem to be stationary
+#Work in differences. It seems to be stationary, but is not clear
 D_UE<-diff(UE)
 ts.plot(D_UE,main="Differences of Unemployment")
 
@@ -401,7 +402,7 @@ par(mfrow=c(1,1))
 #############
 ts.plot(IRMEX90,main="IRMEX90",ylab="Percentage")
 
-#What kind of trend? Fail to reject, Zt is stationary, IRMEX90 is deterministic, either work in differences or detrend
+#What kind of trend? Reject, Zt is random walk, IRMEX90 is stochastic, work in differences
 q7<-floor(sqrt(length(IRMEX90)))
 CADFtest(IRMEX90,type="trend",criterion="BIC",max.lag.y=q7)
 
