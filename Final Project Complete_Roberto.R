@@ -322,9 +322,9 @@ fit_vecm1
 ################
 #### GARCH #####
 ################
-#AR(1),SAR(1).The (1,1,0)(1,1,0) seemed to be the best model for GDP, lets re-estimate it
+#SAR(1).The (0,1,0)(1,1,0) seemed to be the best model for GDP, lets re-estimate it
 #And check for conditional heteroskedasticity
-ARSAR<-Arima(L_GDP,order=c(1,1,0),seasonal=c(1,1,0),include.constant=TRUE)
+ARSAR<-Arima(L_GDP,order=c(0,1,0),seasonal=c(1,1,0),include.constant=TRUE)
 par(mfrow=c(2,1))
 acf(ARSAR$residuals)
 #Significant autocorrelations in the squared residuals
@@ -333,8 +333,8 @@ par(mfrow=c(1,1))
 Box.test((ARSAR$residuals^2),lag=round(sqrt(length(ARSAR$residuals))),type="Ljung-Box")
 #There is only one significant, so we could probably get away with an ARCH model
 
-#lets do ARCH(1), i.e. GARCH(1,0)
-ARCH<-garchFit(~arma(4,0)+garch(1,0),cond.dist="QMLE",data=SDL_GDP) # this is bastardized attempt to work
+#lets do ARCH(1), i.e. GARCH(1,1)
+ARCH<-garchFit(~arma(4,0)+garch(1,1),cond.dist="QMLE",data=SDL_GDP)
 # with the fGARCH package without a seasonal model
 summary(ARCH)
 par(mfrow=c(1,1))
@@ -342,4 +342,4 @@ plot(ARCH, which=10)
 plot(ARCH, which=11)
 plot(ARCH, which=2)
 plot(ARCH, which=13)
-#So we see the most, not surprisingly, at around 2000, and 2008, the greatest periods of financial turmoil
+#Greatest volatility was observed in 2000, and 2008 (financial crisis)
