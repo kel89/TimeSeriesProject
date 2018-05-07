@@ -21,7 +21,7 @@ library(fGarch)
 ################
 ##### Data #####
 ################
-GDP<-read_excel("E:/Cornell/Courses/4th semester/ILRST 4550 Applied Time Series Analysis/Project/Data_Roberto.xlsx",sheet ="GDP",skip=17)
+GDP<-read_excel("D:/Cornell/Courses/4th semester/ILRST 4550 Applied Time Series Analysis/Project/Data_Roberto.xlsx",sheet ="GDP",skip=17)
 GDP<-ts(GDP[,2],start=c(1993,1),frequency=4)
 GDP<-window(GDP,start=c(1997,1),end=c(2017,4))
 
@@ -68,7 +68,7 @@ acf(MA$residuals,main="Autocorrelations of MA(1) model")
 Box.test(MA$residuals,lag=q1,type="Ljung-Box")
 
 #MA(1) & SMA(1) model: Both MA(1) and SMA(1) coefficients are significant.
-#Fail to reject, resuduals are white noise, the model is validated
+#Fail to reject, residuals are white noise, the model is validated
 MASMA<-Arima(L_GDP,order=c(0,1,1),seasonal=c(0,1,1),include.constant=TRUE)
 abs(MASMA$coef/sqrt(diag(MASMA$var.coef)))
 ts.plot(MASMA$residuals,main="MA(1) & SMA(1) Residuals")
@@ -84,7 +84,7 @@ acf(AR$residuals,main="Autocorrelations of AR(1) model")
 Box.test(AR$residuals,lag=q1,type="Ljung-Box")
 
 #AR(1) & SAR(1) model: Both AR(1) and SAR(1) coefficients are significant.
-#Fail to reject, resuduals are white noise, the model is validated
+#Fail to reject, residuals are white noise, the model is validated
 ARSAR<-Arima(L_GDP,order=c(1,1,0),seasonal=c(1,1,0),include.constant=TRUE)
 abs(ARSAR$coef/sqrt(diag(ARSAR$var.coef)))
 ts.plot(ARSAR$residuals,main="Ar(1) & SAR(1) Residuals")
@@ -92,7 +92,7 @@ acf(ARSAR$residuals,main="Autocorrelations of Ar(1) & SAR(1) model")
 Box.test(ARSAR$residuals,lag=q1,type="Ljung-Box")
 
 #SAR(1) model: SAR(1) coefficient is significant.
-#Fail to reject, resuduals are white noise, the model is validated
+#Fail to reject, residuals are white noise, the model is validated
 SAR<-Arima(L_GDP,order=c(0,1,0),seasonal=c(1,1,0),include.constant=TRUE)
 abs(SAR$coef/sqrt(diag(SAR$var.coef)))
 ts.plot(SAR$residuals,main="SAR(1) Residuals")
@@ -164,7 +164,7 @@ lines(SAR_U,col="blue")
 ########################
 ##### Unemployment #####
 ########################
-UE<-read_excel("E:/Cornell/Courses/4th semester/ILRST 4550 Applied Time Series Analysis/Project/Data_Roberto.xlsx",sheet ="Unemployment",skip=10)
+UE<-read_excel("D:/Cornell/Courses/4th semester/ILRST 4550 Applied Time Series Analysis/Project/Data_Roberto.xlsx",sheet ="Unemployment",skip=10)
 UE<-ts(UE[,2],start=c(1987,1),frequency=4)
 UE<-window(UE,start=c(1997,1),end=c(2017,4))
 
@@ -199,7 +199,7 @@ summary(OLR)
 plot(UE[2:84],GDPG,main="Okun's Law Regression",xlab="Unemployment Rate (%)",ylab="GDP Growth (%)",pch=16,cex=1.3,col="blue")
 abline(OLR,col="red")
 
-#It seems that GDP lags one period UE (which is the opposite of what we wanted)
+#It seems that GDP leads one period UE (which is the opposite of what we wanted)
 ccf(x=SDL_GDP[,1],y=SD_UE[,1], main="Cross Correlation: y=UE & x=GDP")
 
 
@@ -309,7 +309,8 @@ Box.test(fit_ecm$residuals,lag=p2,type="Ljung-Box")
 summary(fit_ecm)
 
 #Johansen approach
-#We reject in all cases, no cointegration
+#We reject at rank=0, therefore we have at least one co integration
+#We reject at rank=1 with a 90% and 95%, but not with the 99%, Therefore we have at most one co integration with 90% & 95%
 jm<-cbind(S_UE,SL_GDP)
 trace_test<-ca.jo(jm,type="trace",K=4,ecdet="const",spec="transitory")
 summary(trace_test)
