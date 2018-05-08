@@ -199,7 +199,7 @@ summary(OLR)
 plot(UE[2:84],GDPG,main="Okun's Law Regression",xlab="Unemployment Rate (%)",ylab="GDP Growth (%)",pch=16,cex=1.3,col="blue")
 abline(OLR,col="red")
 
-#It seems that GDP leads one period UE (which is the opposite of what we wanted)
+#It seems that GDP lags one period UE (which is the opposite of what we wanted)
 ccf(x=SDL_GDP[,1],y=SD_UE[,1], main="Cross Correlation: y=UE & x=GDP")
 
 
