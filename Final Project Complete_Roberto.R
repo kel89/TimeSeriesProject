@@ -317,6 +317,7 @@ summary(trace_test)
 maxeigen_test<-ca.jo(jm,type="eigen",K=4,ecdet="const", spec="transitory")
 summary(maxeigen_test)
 
+#However, due technological limitation, we cannot validate this model as we were not able to get the residuals from the fitted VECM
 fit_vecm1<-cajorls(trace_test,r=1)
 fit_vecm1
 
